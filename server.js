@@ -13,12 +13,11 @@ app.use(express.json());
 let orders = []; // "Database" In-Memory untuk pesanan
 
 // "Database" In-Memory untuk Toko Boba
-// Pindahkan data bobaShopsData dari App.jsx ke sini
 let bobaShops = [
   {
     id: 1,
     name: 'Boba Enak Manado Town Square (dari Server)',
-    position: [1.4705, 124.8370], // Perkiraan di sekitar Mantos
+    position: [1.4705, 124.8370],
     menu: [
       { id: 'bms1', name: 'Coklat Boba Spesial', price: 26000 },
       { id: 'bms2', name: 'Teh Susu Manado', price: 23000 },
@@ -28,7 +27,7 @@ let bobaShops = [
   {
     id: 2,
     name: 'Boba Segar Megamall (dari Server)',
-    position: [1.4800, 124.8400], // Perkiraan di sekitar Megamall
+    position: [1.4800, 124.8400],
     menu: [
       { id: 'bsm1', name: 'Klasik Milk Tea Boba', price: 20000 },
       { id: 'bsm2', name: 'Smoothie Boba Buah Naga', price: 27000 },
@@ -38,15 +37,16 @@ let bobaShops = [
   {
     id: 3,
     name: 'Waroeng Boba Paal Dua (dari Server)',
-    position: [1.4600, 124.8500], // Perkiraan di area Paal Dua
+    position: [1.4600, 124.8500],
     menu: [
       { id: 'wbp1', name: 'Kopi Susu Boba', price: 24000 },
       { id: 'wbp2', name: 'Strawberry Cheesecake Boba', price: 28000 },
       { id: 'wbp3', name: 'Avocado Boba Cream', price: 27000 },
     ],
   },
-  // Tambahkan lebih banyak toko di Manado jika perlu
 ];
+// Variabel untuk membantu generate ID unik sederhana untuk toko baru
+let nextShopId = bobaShops.length > 0 ? Math.max(...bobaShops.map(s => s.id)) + 1 : 1;
 
 
 // Daftar status pesanan yang mungkin
@@ -70,7 +70,7 @@ app.post('/api/orders', (req, res) => {
   }
 
   newOrder.receivedAt = new Date().toISOString();
-  newOrder.status = newOrder.status || "pending";
+  newOrder.status = newOrder.status || "tertunda"; // Default ke 'tertunda' jika frontend menggunakan 'pending'
 
   orders.push(newOrder);
   console.log('Pesanan Baru Diterima:', newOrder.orderId, newOrder.status);
@@ -118,19 +118,108 @@ app.patch('/api/orders/:orderId/status', (req, res) => {
 });
 
 // --- API Endpoints untuk TOKO BOBA ---
+
 // GET /api/shops (MENGAMBIL SEMUA data toko boba)
 app.get('/api/shops', (req, res) => {
   res.status(200).json({
     message: 'Daftar toko boba berhasil diambil dari server.',
-    shops: bobaShops, // Kirim semua data toko
+    shops: bobaShops,
   });
 });
 
-// (NANTI ANDA BISA MENAMBAHKAN ENDPOINT LAIN UNTUK MENGEDIT/MENAMBAH TOKO DI SINI)
-// Contoh:
-// POST /api/shops (untuk menambah toko baru)
-// PUT /api/shops/:shopId (untuk mengupdate toko)
-// DELETE /api/shops/:shopId (untuk menghapus toko)
+// POST /api/shops (MEMBUAT toko boba baru)
+app.post('/api/shops', (req, res) => {
+  const { name, position, menu } = req.body;
+
+  // Validasi dasar
+  if (!name || !position || !Array.isArray(position) || position.length !== 2) {
+    return res.status(400).json({ message: 'Data toko tidak lengkap atau tidak valid (nama dan posisi [lat, lng] dibutuhkan).' });
+  }
+  if (!menu || !Array.isArray(menu)) {
+      return res.status(400).json({ message: 'Data menu tidak valid (harus berupa array).' });
+  }
+  // Validasi lebih lanjut untuk setiap item menu
+  for (const item of menu) {
+      if (!item.id || typeof item.id !== 'string' || !item.name || typeof item.name !== 'string' || typeof item.price !== 'number') {
+          return res.status(400).json({ message: 'Setiap item menu harus memiliki id (string), name (string), dan price (number).' });
+      }
+  }
+
+
+  const newShop = {
+    id: nextShopId++, // Gunakan ID yang unik dan increment
+    name,
+    position,
+    menu: menu || [], // Default ke array kosong jika menu tidak disediakan
+    createdAt: new Date().toISOString(),
+    lastUpdatedAt: new Date().toISOString(),
+  };
+
+  bobaShops.push(newShop);
+  console.log('Toko Boba Baru Ditambahkan:', newShop);
+  res.status(201).json({
+    message: 'Toko boba berhasil ditambahkan!',
+    shopData: newShop,
+  });
+});
+
+// PUT /api/shops/:shopId (MENGUPDATE toko boba yang ada)
+app.put('/api/shops/:shopId', (req, res) => {
+  const shopId = parseInt(req.params.shopId); // ID dari URL adalah string, ubah ke integer
+  const { name, position, menu } = req.body;
+
+  // Validasi dasar
+  if (!name || !position || !Array.isArray(position) || position.length !== 2) {
+    return res.status(400).json({ message: 'Data toko tidak lengkap atau tidak valid (nama dan posisi [lat, lng] dibutuhkan).' });
+  }
+   if (!menu || !Array.isArray(menu)) {
+      return res.status(400).json({ message: 'Data menu tidak valid (harus berupa array).' });
+  }
+  // Validasi lebih lanjut untuk setiap item menu
+  for (const item of menu) {
+      if (!item.id || typeof item.id !== 'string' || !item.name || typeof item.name !== 'string' || typeof item.price !== 'number') {
+          return res.status(400).json({ message: 'Setiap item menu harus memiliki id (string), name (string), dan price (number).' });
+      }
+  }
+
+  const shopIndex = bobaShops.findIndex(shop => shop.id === shopId);
+
+  if (shopIndex === -1) {
+    return res.status(404).json({ message: `Toko dengan ID ${shopId} tidak ditemukan.` });
+  }
+
+  // Update data toko
+  bobaShops[shopIndex] = {
+    ...bobaShops[shopIndex], // Pertahankan ID asli dan createdAt
+    name,
+    position,
+    menu,
+    lastUpdatedAt: new Date().toISOString(),
+  };
+
+  console.log(`Data toko ID ${shopId} diupdate menjadi:`, bobaShops[shopIndex]);
+  res.status(200).json({
+    message: `Data toko ID ${shopId} berhasil diupdate.`,
+    updatedShop: bobaShops[shopIndex],
+  });
+});
+
+// DELETE /api/shops/:shopId (MENGHAPUS toko boba)
+app.delete('/api/shops/:shopId', (req, res) => {
+    const shopId = parseInt(req.params.shopId);
+    const shopIndex = bobaShops.findIndex(shop => shop.id === shopId);
+
+    if (shopIndex === -1) {
+        return res.status(404).json({ message: `Toko dengan ID ${shopId} tidak ditemukan.` });
+    }
+
+    const deletedShop = bobaShops.splice(shopIndex, 1); // Hapus toko dari array
+    console.log(`Toko Boba Dihapus:`, deletedShop[0]);
+    res.status(200).json({
+        message: `Toko boba dengan ID ${shopId} berhasil dihapus.`,
+        deletedShop: deletedShop[0]
+    });
+});
 
 
 app.get('/', (req, res) => {
@@ -139,8 +228,13 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server backend Boba berjalan di http://localhost:${PORT}`);
-  console.log(`Endpoint POST pesanan: http://localhost:${PORT}/api/orders`);
-  console.log(`Endpoint GET pesanan: http://localhost:${PORT}/api/orders`);
-  console.log(`Endpoint PATCH status pesanan: http://localhost:${PORT}/api/orders/:orderId/status`);
-  console.log(`Endpoint GET toko: http://localhost:${PORT}/api/shops`); // Log baru
+  console.log(`---- ENDPOINTS PESANAN ----`);
+  console.log(`POST   /api/orders`);
+  console.log(`GET    /api/orders`);
+  console.log(`PATCH  /api/orders/:orderId/status`);
+  console.log(`---- ENDPOINTS TOKO ----`);
+  console.log(`GET    /api/shops`);
+  console.log(`POST   /api/shops`);
+  console.log(`PUT    /api/shops/:shopId`);
+  console.log(`DELETE /api/shops/:shopId`);
 });
