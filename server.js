@@ -10,19 +10,56 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-let orders = []; // "Database" In-Memory kita
+let orders = []; // "Database" In-Memory untuk pesanan
+
+// "Database" In-Memory untuk Toko Boba
+// Pindahkan data bobaShopsData dari App.jsx ke sini
+let bobaShops = [
+  {
+    id: 1,
+    name: 'Boba Enak Manado Town Square (dari Server)',
+    position: [1.4705, 124.8370], // Perkiraan di sekitar Mantos
+    menu: [
+      { id: 'bms1', name: 'Coklat Boba Spesial', price: 26000 },
+      { id: 'bms2', name: 'Teh Susu Manado', price: 23000 },
+      { id: 'bms3', name: 'Matcha Lezat', price: 29000 },
+    ],
+  },
+  {
+    id: 2,
+    name: 'Boba Segar Megamall (dari Server)',
+    position: [1.4800, 124.8400], // Perkiraan di sekitar Megamall
+    menu: [
+      { id: 'bsm1', name: 'Klasik Milk Tea Boba', price: 20000 },
+      { id: 'bsm2', name: 'Smoothie Boba Buah Naga', price: 27000 },
+      { id: 'bsm3', name: 'Teh Hijau Lemon Boba', price: 22000 },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Waroeng Boba Paal Dua (dari Server)',
+    position: [1.4600, 124.8500], // Perkiraan di area Paal Dua
+    menu: [
+      { id: 'wbp1', name: 'Kopi Susu Boba', price: 24000 },
+      { id: 'wbp2', name: 'Strawberry Cheesecake Boba', price: 28000 },
+      { id: 'wbp3', name: 'Avocado Boba Cream', price: 27000 },
+    ],
+  },
+  // Tambahkan lebih banyak toko di Manado jika perlu
+];
+
 
 // Daftar status pesanan yang mungkin
 const POSSIBLE_STATUSES = [
-    "tertunda", 
-    "dikonfirmasi", 
-    "sedang_diproses", 
-    "siap_diambil", 
-    "selesai", 
+    "tertunda",
+    "dikonfirmasi",
+    "sedang_diproses",
+    "siap_diambil",
+    "selesai",
     "dibatalkan"
 ];
 
-// --- API Endpoints ---
+// --- API Endpoints untuk PESANAN ---
 
 // POST /api/orders (MENERIMA pesanan baru)
 app.post('/api/orders', (req, res) => {
@@ -33,9 +70,7 @@ app.post('/api/orders', (req, res) => {
   }
 
   newOrder.receivedAt = new Date().toISOString();
-  // Pastikan status awal adalah 'pending' jika belum di-set oleh frontend
-  newOrder.status = newOrder.status || "pending"; 
-  // newOrder.server_status = 'received'; // Bisa dihapus jika 'status' sudah cukup
+  newOrder.status = newOrder.status || "pending";
 
   orders.push(newOrder);
   console.log('Pesanan Baru Diterima:', newOrder.orderId, newOrder.status);
@@ -50,20 +85,18 @@ app.get('/api/orders', (req, res) => {
   res.status(200).json({
     message: 'Daftar pesanan berhasil diambil.',
     count: orders.length,
-    orders: orders, // Kirim semua pesanan
+    orders: orders,
   });
 });
 
 // PATCH /api/orders/:orderId/status (MENGUPDATE STATUS pesanan tertentu)
-// :orderId adalah parameter URL yang akan berisi ID pesanan
 app.patch('/api/orders/:orderId/status', (req, res) => {
-  const { orderId } = req.params; // Mengambil orderId dari URL
-  const { status: newStatus } = req.body; // Mengambil status baru dari body request
+  const { orderId } = req.params;
+  const { status: newStatus } = req.body;
 
-  // Validasi status baru
   if (!newStatus || !POSSIBLE_STATUSES.includes(newStatus)) {
-    return res.status(400).json({ 
-        message: `Status tidak valid. Status yang diizinkan: ${POSSIBLE_STATUSES.join(', ')}` 
+    return res.status(400).json({
+        message: `Status tidak valid. Status yang diizinkan: ${POSSIBLE_STATUSES.join(', ')}`
     });
   }
 
@@ -73,9 +106,8 @@ app.patch('/api/orders/:orderId/status', (req, res) => {
     return res.status(404).json({ message: `Pesanan dengan ID ${orderId} tidak ditemukan.` });
   }
 
-  // Update status pesanan
   orders[orderIndex].status = newStatus;
-  orders[orderIndex].lastUpdatedAt = new Date().toISOString(); // Catat waktu update
+  orders[orderIndex].lastUpdatedAt = new Date().toISOString();
 
   console.log(`Status pesanan ${orderId} diupdate menjadi: ${newStatus}`);
 
@@ -84,6 +116,21 @@ app.patch('/api/orders/:orderId/status', (req, res) => {
     updatedOrder: orders[orderIndex],
   });
 });
+
+// --- API Endpoints untuk TOKO BOBA ---
+// GET /api/shops (MENGAMBIL SEMUA data toko boba)
+app.get('/api/shops', (req, res) => {
+  res.status(200).json({
+    message: 'Daftar toko boba berhasil diambil dari server.',
+    shops: bobaShops, // Kirim semua data toko
+  });
+});
+
+// (NANTI ANDA BISA MENAMBAHKAN ENDPOINT LAIN UNTUK MENGEDIT/MENAMBAH TOKO DI SINI)
+// Contoh:
+// POST /api/shops (untuk menambah toko baru)
+// PUT /api/shops/:shopId (untuk mengupdate toko)
+// DELETE /api/shops/:shopId (untuk menghapus toko)
 
 
 app.get('/', (req, res) => {
@@ -95,4 +142,5 @@ app.listen(PORT, () => {
   console.log(`Endpoint POST pesanan: http://localhost:${PORT}/api/orders`);
   console.log(`Endpoint GET pesanan: http://localhost:${PORT}/api/orders`);
   console.log(`Endpoint PATCH status pesanan: http://localhost:${PORT}/api/orders/:orderId/status`);
+  console.log(`Endpoint GET toko: http://localhost:${PORT}/api/shops`); // Log baru
 });
