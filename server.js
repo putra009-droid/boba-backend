@@ -18,6 +18,7 @@ let bobaShops = [
     id: 1,
     name: 'Boba Enak Manado Town Square (Contoh)',
     position: [1.4705, 124.8370],
+    whatsappNumber: '6281200000001', // TAMBAHKAN/UPDATE INI
     menu: [
       { id: 'bms1', name: 'Coklat Boba Spesial', price: 26000 },
       { id: 'bms2', name: 'Teh Susu Manado', price: 23000 },
@@ -30,6 +31,7 @@ let bobaShops = [
     id: 2,
     name: 'Boba Segar Megamall (Contoh)',
     position: [1.4800, 124.8400],
+    whatsappNumber: '6281200000002', // TAMBAHKAN/UPDATE INI
     menu: [
       { id: 'bsm1', name: 'Klasik Milk Tea Boba', price: 20000 },
       { id: 'bsm2', name: 'Smoothie Boba Buah Naga', price: 27000 },
@@ -106,7 +108,7 @@ app.get('/api/shops', (req, res) => {
 });
 
 app.post('/api/shops', (req, res) => {
-  const { name, position, menu } = req.body;
+  const { name, position, menu, whatsappNumber } = req.body; // Ambil whatsappNumber
   if (!name || !position || !Array.isArray(position) || position.length !== 2) {
     return res.status(400).json({ message: 'Data toko tidak lengkap (nama, posisi [lat,lng] dibutuhkan).' });
   }
@@ -122,6 +124,7 @@ app.post('/api/shops', (req, res) => {
     id: nextShopId++,
     name,
     position,
+    whatsappNumber: whatsappNumber || null, // Simpan nomor WA
     menu: menu || [],
     createdAt: new Date().toISOString(),
     lastUpdatedAt: new Date().toISOString(),
@@ -133,7 +136,7 @@ app.post('/api/shops', (req, res) => {
 
 app.put('/api/shops/:shopId', (req, res) => {
   const shopId = parseInt(req.params.shopId);
-  const { name, position, menu } = req.body;
+  const { name, position, menu, whatsappNumber } = req.body; // Ambil whatsappNumber
   if (!name || !position || !Array.isArray(position) || position.length !== 2) {
     return res.status(400).json({ message: 'Data toko tidak lengkap (nama, posisi [lat,lng] dibutuhkan).' });
   }
@@ -149,7 +152,14 @@ app.put('/api/shops/:shopId', (req, res) => {
   if (shopIndex === -1) {
     return res.status(404).json({ message: `Toko dengan ID ${shopId} tidak ditemukan.` });
   }
-  bobaShops[shopIndex] = { ...bobaShops[shopIndex], name, position, menu, lastUpdatedAt: new Date().toISOString() };
+  bobaShops[shopIndex] = {
+      ...bobaShops[shopIndex],
+      name,
+      position,
+      whatsappNumber: whatsappNumber || null, // Update nomor WA
+      menu,
+      lastUpdatedAt: new Date().toISOString()
+    };
   console.log(`Data toko ID ${shopId} diupdate menjadi:`, bobaShops[shopIndex]);
   res.status(200).json({ message: `Data toko ID ${shopId} berhasil diupdate.`, updatedShop: bobaShops[shopIndex] });
 });
